@@ -1,0 +1,38 @@
+
+cpld 实现 MDIO 透传 功能  支持 Clause22 / Clause45
+cpld 实现 把选中的一路host  mdio 数据透传到 10个 salve 设备上，一个host 可以同时和10个 salve中其中任意几路通信。
+
+1;  host接口有9路,通过4个port 信号来选择，同一时刻只有一个被选中的host接口
+2： host 的 mdc 信号直接透传到选中的slave port 上去。
+3： host 和 slave 接口 mdio 信号是双向的，在透传过程中需要根据mdio 协议，及时切换数据传输的方向，
+    同时选中同一个host port的多个slave port ，因为只有其中一路地址匹配的响应，把这几路选中的输入信号逻辑或后返回给被选中的host 的 mdio口
+
+4:  10个 port  每个有一个16字节控制寄存器，寄存器功能   bit[15]：1 port 使能，0 : port 进制  bit[8:0]  选择对应的个host port，这个port中只能同时有一个bit为1
+    假定 slave port0 控制寄存器值为 10000001 00000000 表示 slave port0 选中了 host 的port8 
+    port 被使能后主机才能给salve口送数据和时钟，可以同时多个slave port 选中同一个 host port 
+   
+5：mdc 频率 2.5M ，系统操作频率50M
+
+6：给出系统的busy状态信号，没有检测到host口有有效的数据帧在传输，既可以定义为idle，否则定义为busy 
+
+
+module 的 port 端口 
+
+input clk_50M 
+input reset_n
+
+input [8:0]m_mdc
+inout [8:0]m_mdio
+
+output [9:0]s_mdc
+inout  [9:0]s_mdio
+output busy 
+
+仿真设计：
+
+轮流选择host port0 -port8 中的0路和8路，选择 salve port 0 1 2 3 4 5 6 7  通信。 
+模拟9路 mdio host 设备， 和 10路 mdio salve 设备。
+通过选择的host port 发出符合Clause45 协议的数据数据，先写入再读出，写入读出一致就反馈结果ok。每个salve port 就验证一个地址寄存器读写即可。
+
+给出modesim 的tb 仿真文件 和 do 文件
+
